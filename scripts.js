@@ -6,6 +6,7 @@ var ballRadius = 10;
 var ballSpeedX = 5;
 var ballSpeedY = 5;
 var paddleX = 400;
+var paused = false;
 
 const BRICK_W = 80;
 const BRICK_H = 20;
@@ -29,6 +30,8 @@ window.onload = function() {
   setInterval(updateAll, 1000/framesPerSecond);
 
   canvas.addEventListener('mousemove', updateMousePos);
+  document.addEventListener('keypress', pauseHandler);
+
   brickReset();
   ballReset();
 }
@@ -56,6 +59,11 @@ function ballMove() {
   }
 }
 
+function pauseHandler(e) {
+  if (e.keyCode == 32)
+    paused = !paused;
+}
+
 function ballBrickHandling() {
   var ballBrickCol = Math.floor(ballX / BRICK_W);
   var ballBrickRow = Math.floor(ballY / BRICK_H);
@@ -80,7 +88,6 @@ function ballBrickHandling() {
           bothTestsFailed = false;
         }
       }
-
       if (prevBrickRow != ballBrickRow) {
         if (!isBrickAtColRow(ballBrickCol, prevBrickRow)) {
           ballSpeedY *= -1;
@@ -100,10 +107,12 @@ function ballPaddleHandling() {
   var paddleBottomEdgeY = paddleTopEdgeY + PADDLE_THICKNESS;
   var paddleLeftEdgeX = paddleX;
   var paddleRightEdgeX = paddleLeftEdgeX + PADDLE_WIDTH;
-  if (ballY > paddleTopEdgeY &&
-      ballY < paddleBottomEdgeY &&
-      ballX > paddleLeftEdgeX &&
-      ballX < paddleRightEdgeX) {
+  var closestX = clamp(ballX, paddleLeftEdgeX, paddleRightEdgeX);
+  var closestY = clamp(ballY, paddleTopEdgeY, paddleBottomEdgeY);
+  var distanceX = ballX - closestX;
+  var distanceY = ballY - closestY;
+  var distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+  if (distanceSquared < (ballRadius * ballRadius) && ballSpeedY > 0) {
     ballSpeedY *= -1;
     var centerOfPaddleX = paddleX + PADDLE_WIDTH/2;
     var ballDistFromPaddleCenterX = ballX - centerOfPaddleX;
@@ -115,7 +124,14 @@ function ballPaddleHandling() {
   }
 }
 
+function clamp(num, min, max) {
+  return num <= min ? min : num >= max ? max : num;
+}
+
 function moveAll() {
+  if (paused) {
+    return;
+  }
   ballMove();
   ballBrickHandling();
   ballPaddleHandling();
@@ -177,6 +193,9 @@ function colorText(showWords, textX, textY, fillColor) {
 }
 
 function updateMousePos(e) {
+  if (paused) {
+    return;
+  }
   var rect = canvas.getBoundingClientRect();
   var root = document.documentElement;
   mouseX = e.clientX - rect.left - root.scrollLeft;
